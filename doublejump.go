@@ -59,3 +59,45 @@ func (this *looseHolder) shrink() {
 	this.a = a
 	this.f = nil
 }
+
+type compactHolder struct {
+	a []interface{}
+	m map[interface{}]int
+}
+
+func (this *compactHolder) add(obj interface{}) {
+	if _, ok := this.m[obj]; ok {
+		return
+	}
+
+	this.a = append(this.a, obj)
+	this.m[obj] = len(this.a) - 1
+}
+
+func (this *compactHolder) shrink(a []interface{}) {
+	for i, obj := range a {
+		this.a[i] = obj
+		this.m[obj] = i
+	}
+}
+
+func (this *compactHolder) remove(obj interface{}) {
+	if idx, ok := this.m[obj]; ok {
+		n := len(this.a)
+		this.a[idx] = this.a[n-1]
+		this.m[this.a[idx]] = idx
+		this.a[n-1] = nil
+		this.a = this.a[:n-1]
+		delete(this.m, obj)
+	}
+}
+
+func (this *compactHolder) get(key uint64, nl int) interface{} {
+	na := len(this.a)
+	if na == 0 {
+		return nil
+	}
+
+	h := jump.Hash(uint64(float64(key)/float64(nl)*float64(na)), na)
+	return this.a[h]
+}
